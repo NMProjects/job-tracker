@@ -17,10 +17,41 @@ export default function AddJobForm() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
     const [error, setError] = useState(false);
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+    function validate() {
+        const newErrors: { [key: string]: string } = {};
+
+        if (!company.trim()) newErrors.company = "Company is required";
+        if (!title.trim()) newErrors.title = "Title is required";
+        if (!link.trim()) newErrors.link = "Link is required";
+
+        try {
+            new URL(link);
+        } catch {
+            if (link.trim()) newErrors.link = "Link must be a valid URL";
+        }
+
+        if (date_applied) {
+            const selectedDate = new Date(date_applied);
+            const today = new Date();
+
+            selectedDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+
+            if (selectedDate > today) {
+                newErrors.date_applied = "Date cannot be in the future";
+            }
+        }
+
+        setErrors(newErrors);
+
+        return Object.keys(newErrors).length === 0;
+    }
 
     return (
         <>
-            <h1>Job Form</h1>
+            <h2>Job Form</h2>
             {message && (
                 <div
                     style={{
@@ -35,14 +66,27 @@ export default function AddJobForm() {
                 method="POST"
                 onSubmit={async (e) => {
                     try {
+                        e.preventDefault();
+                        setLoading(true);
+
+                        if (!validate()) {
+                            setMessage("Please fix errors before submitting");
+                            setError(true);
+                            return;
+                        }
+
+                        setError(false);
+                        setMessage("");
+
                         const newJob = {
-                            company,
-                            title,
+                            company: company.trim(),
+                            title: title.trim(),
                             status,
-                            link,
-                            notes,
+                            link: link.trim(),
+                            notes: notes.trim(),
                             date_applied,
                         };
+
                         const res = await fetch("/api/jobs", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
@@ -57,7 +101,7 @@ export default function AddJobForm() {
                         } else {
                             setMessage("Job added successfully!");
                             setError(false);
-                            // optional: clear form
+
                             setCompany("");
                             setTitle("");
                             setStatus("Applied");
@@ -68,16 +112,19 @@ export default function AddJobForm() {
                             );
                         }
 
-                        setTimeout(() => {
-                            setMessage("");
-                        }, 3000);
-
                         router.refresh();
                     } catch (err) {
                         setError(true);
                         setMessage("An unexpected error occurred!" + err);
                     } finally {
                         setLoading(false);
+                        setTimeout(
+                            () => {
+                                setMessage("");
+                                setError(false);
+                            },
+                            error ? 5000 : 3000
+                        );
                     }
                 }}
             >
@@ -87,12 +134,18 @@ export default function AddJobForm() {
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
                 />
+                {errors.company && (
+                    <div style={{ color: "red" }}>{errors.company}</div>
+                )}
                 <input
                     type="text"
                     placeholder="Job Title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                 />
+                {errors.title && (
+                    <div style={{ color: "red" }}>{errors.title}</div>
+                )}
                 <select
                     id="status"
                     name="status"
@@ -109,6 +162,9 @@ export default function AddJobForm() {
                     value={link}
                     onChange={(e) => setLink(e.target.value)}
                 />
+                {errors.link && (
+                    <div style={{ color: "red" }}>{errors.link}</div>
+                )}
                 <input
                     type="text"
                     placeholder="Notes"
@@ -120,11 +176,12 @@ export default function AddJobForm() {
                     value={date_applied}
                     onChange={(e) => setDate_applied(e.target.value)}
                 />
-                <input
-                    type="submit"
-                    value={loading ? "Saving..." : "Add Job"}
-                    disabled={loading}
-                />
+                {errors.date_applied && (
+                    <div style={{ color: "red" }}>{errors.date_applied}</div>
+                )}
+                <button type="submit" disabled={loading}>
+                    {loading ? "Saving..." : "Add Job"}
+                </button>
             </form>
         </>
     );

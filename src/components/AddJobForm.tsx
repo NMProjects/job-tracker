@@ -1,7 +1,10 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AddJobForm() {
+    const router = useRouter();
+
     const [company, setCompany] = useState("");
     const [title, setTitle] = useState("");
     const [status, setStatus] = useState("Applied");
@@ -11,20 +14,71 @@ export default function AddJobForm() {
         new Date().toISOString().split("T")[0]
     );
 
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState("");
+    const [error, setError] = useState(false);
+
     return (
         <>
             <h1>Job Form</h1>
+            {message && (
+                <div
+                    style={{
+                        color: error ? "red" : "green",
+                        marginBottom: "1rem",
+                    }}
+                >
+                    {message}
+                </div>
+            )}
             <form
-                onSubmit={(e) => {
-                    e.preventDefault(); // stops page refresh
-                    console.log({
-                        company,
-                        title,
-                        status,
-                        link,
-                        notes,
-                        date_applied,
-                    });
+                method="POST"
+                onSubmit={async (e) => {
+                    try {
+                        const newJob = {
+                            company,
+                            title,
+                            status,
+                            link,
+                            notes,
+                            date_applied,
+                        };
+                        const res = await fetch("/api/jobs", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(newJob),
+                        });
+
+                        const data = await res.json();
+
+                        if (data.error) {
+                            setError(true);
+                            setMessage("Failed to add job!");
+                        } else {
+                            setMessage("Job added successfully!");
+                            setError(false);
+                            // optional: clear form
+                            setCompany("");
+                            setTitle("");
+                            setStatus("Applied");
+                            setLink("");
+                            setNotes("");
+                            setDate_applied(
+                                new Date().toISOString().split("T")[0]
+                            );
+                        }
+
+                        setTimeout(() => {
+                            setMessage("");
+                        }, 3000);
+
+                        router.refresh();
+                    } catch (err) {
+                        setError(true);
+                        setMessage("An unexpected error occurred!" + err);
+                    } finally {
+                        setLoading(false);
+                    }
                 }}
             >
                 <input
@@ -66,7 +120,11 @@ export default function AddJobForm() {
                     value={date_applied}
                     onChange={(e) => setDate_applied(e.target.value)}
                 />
-                <input type="submit" />
+                <input
+                    type="submit"
+                    value={loading ? "Saving..." : "Add Job"}
+                    disabled={loading}
+                />
             </form>
         </>
     );

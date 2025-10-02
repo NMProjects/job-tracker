@@ -2,8 +2,6 @@ import { supabase } from "@/lib/supabaseClient";
 import JobsTable from "@/components/JobsTable";
 import AddJobForm from "@/components/AddJobForm";
 
-export const revalidate = 0;
-
 export default async function Home() {
     const { data: jobs, error } = await supabase
         .from("jobs")
